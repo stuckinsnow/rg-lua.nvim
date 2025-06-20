@@ -63,20 +63,24 @@ function M.perform_search(search_terms, search_mode)
 
 	if #search_terms == 1 then
 		-- Single term search
-		cmd = { "rg", "--color=always", search_terms[1], "." }
+		cmd = { "rg", "--color=always", "-i", search_terms[1], "." }
 	elseif and_search then
-		-- Build regex pattern exactly like your bash function
-		local pattern = ""
+		-- Build regex pattern for AND search - must contain ALL terms
+		local pattern = "^"
 		for _, term in ipairs(search_terms) do
-			pattern = pattern .. "(?=.*" .. term .. ")"
+			pattern = pattern .. "(?=.*" .. vim.pesc(term) .. ")"
 		end
-		pattern = pattern .. ".*"
+		pattern = pattern .. ".*$"
 
-		cmd = { "rg", "--color=always", "-P", pattern, "." }
+		cmd = { "rg", "--color=always", "-i", "-P", pattern, "." }
 	else
 		-- OR search - join terms with |
-		local pattern = table.concat(search_terms, "|")
-		cmd = { "rg", "--color=always", pattern, "." }
+		local escaped_terms = {}
+		for _, term in ipairs(search_terms) do
+			table.insert(escaped_terms, vim.pesc(term))
+		end
+		local pattern = table.concat(escaped_terms, "|")
+		cmd = { "rg", "--color=always", "-i", pattern, "." }
 	end
 
 	-- Execute search
@@ -133,17 +137,21 @@ function M.get_file_list(search_terms, search_mode, callback)
 	local cmd
 	if #search_terms == 1 then
 		-- Single term
-		cmd = { "rg", "-l", search_terms[1], "." }
+		cmd = { "rg", "-l", "-i", search_terms[1], "." }
 	elseif and_search then
-		local pattern = ""
+		local pattern = "^"
 		for _, term in ipairs(search_terms) do
-			pattern = pattern .. "(?=.*" .. term .. ")"
+			pattern = pattern .. "(?=.*" .. vim.pesc(term) .. ")"
 		end
-		pattern = pattern .. ".*"
-		cmd = { "rg", "-l", "-P", pattern, "." }
+		pattern = pattern .. ".*$"
+		cmd = { "rg", "-l", "-i", "-P", pattern, "." }
 	else
-		local pattern = table.concat(search_terms, "|")
-		cmd = { "rg", "-l", pattern, "." }
+		local escaped_terms = {}
+		for _, term in ipairs(search_terms) do
+			table.insert(escaped_terms, vim.pesc(term))
+		end
+		local pattern = table.concat(escaped_terms, "|")
+		cmd = { "rg", "-l", "-i", pattern, "." }
 	end
 
 	vim.system(cmd, { text = true }, function(result)
@@ -218,7 +226,7 @@ function M.create_markdown_output(search_output, files, search_terms, search_mod
 end
 
 function M.show_results_buffer(markdown_lines, files, search_terms)
-	local win, buf = utils.create_side_buffer("search_results", 0.7, "markdown")
+	local win, buf = utils.create_side_buffer("search_results", 0.5, "markdown")
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, markdown_lines)
 	vim.bo[buf].modifiable = false
@@ -239,7 +247,15 @@ function M.show_results_buffer(markdown_lines, files, search_terms)
 			prompt = "Open File> ",
 			fzf_opts = {
 				["--header"] = string.format("Files from search: %s", table.concat(search_terms, " ")),
+				["--multi"] = true,
 			},
+			preview = require("fzf-lua").shell.raw_preview_action_cmd(function(items)
+				return string.format(
+					"bat --style=numbers --color=always --line-range=:100 %s 2>/dev/null || cat %s 2>/dev/null || echo '[File not readable]'",
+					vim.fn.shellescape(items[1]),
+					vim.fn.shellescape(items[1])
+				)
+			end),
 			actions = {
 				["default"] = function(selected)
 					if selected and #selected > 0 then

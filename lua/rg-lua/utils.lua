@@ -21,7 +21,7 @@ end
 
 -- Helper to create side buffer with common setup
 function M.create_side_buffer(prefix, width_percent, filetype)
-	width_percent = width_percent or 0.4
+	width_percent = width_percent or 0.5
 	filetype = filetype or "markdown"
 
 	M.close_existing_buffer(prefix)
