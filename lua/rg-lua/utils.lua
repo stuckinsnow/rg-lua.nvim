@@ -46,4 +46,33 @@ function M.create_side_buffer(prefix, width_percent, filetype)
 	return win, buf
 end
 
+-- Helper to create main buffer (replaces current buffer)
+function M.create_main_buffer(prefix, filetype)
+	filetype = filetype or "markdown"
+
+	M.close_existing_buffer(prefix)
+
+	local win = vim.api.nvim_get_current_win()
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(buf, prefix)
+	vim.bo[buf].filetype = filetype
+	vim.api.nvim_win_set_buf(win, buf)
+
+	vim.wo[win].signcolumn = "no"
+	vim.wo[win].wrap = true
+
+	return win, buf
+end
+
+-- Unified buffer creation function
+function M.create_results_buffer(prefix, filetype)
+	local rg_lua = require("rg-lua")
+
+	if rg_lua.config.use_main_buffer then
+		return M.create_main_buffer(prefix, filetype)
+	else
+		return M.create_side_buffer(prefix, nil, filetype)
+	end
+end
+
 return M

@@ -115,7 +115,8 @@ To change the width of the results buffer, you can set this in your Neovim confi
 
 ```lua
 require("rg-lua").setup({
-  width_percent = 0.3  -- 30% of screen width
+  use_main_buffer = true,
+  width_percent = 0.3
 })
 ```
 

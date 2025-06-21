@@ -56,7 +56,7 @@ function M.get_search_mode(search_terms, callback)
 end
 
 function M.show_results_buffer(markdown_lines, files, search_terms)
-	local win, buf = utils.create_side_buffer("search_results", nil, "rg-results")
+	local win, buf = utils.create_results_buffer("search_results", "rg-results")
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, markdown_lines)
 	vim.bo[buf].modifiable = false
@@ -69,7 +69,23 @@ function M.show_results_buffer(markdown_lines, files, search_terms)
 
 	-- Rest of your existing keymap code...
 	vim.keymap.set("n", "q", function()
-		vim.api.nvim_win_close(win, true)
+		local rg_lua = require("rg-lua")
+		if rg_lua.config.use_main_buffer then
+			-- For main buffer mode: switch to alternate buffer or create new one
+			local alt_buf = vim.fn.bufnr("#")
+			if alt_buf ~= -1 and vim.api.nvim_buf_is_valid(alt_buf) and alt_buf ~= buf then
+				vim.api.nvim_win_set_buf(win, alt_buf)
+			else
+				-- No valid alternate buffer, create a new empty one
+				local new_buf = vim.api.nvim_create_buf(true, false)
+				vim.api.nvim_win_set_buf(win, new_buf)
+			end
+			-- Clean up the search results buffer
+			vim.api.nvim_buf_delete(buf, { force = true })
+		else
+			-- For side buffer mode: close the window as before
+			vim.api.nvim_win_close(win, true)
+		end
 	end, { buffer = buf, nowait = true, desc = "Close search results" })
 
 	vim.keymap.set("n", "<CR>", function()
@@ -117,8 +133,11 @@ function M.show_results_buffer(markdown_lines, files, search_terms)
 		end
 	end, { buffer = buf, nowait = true, desc = "Save to file" })
 
+	local rg_lua = require("rg-lua")
+	local buffer_type = rg_lua.config.use_main_buffer and "main buffer" or "side buffer"
+
 	vim.notify(
-		string.format("Search results: %d files | <CR>=pick file, s=save to file, q=close", #files),
+		string.format("Search results in %s: %d files | <CR>=pick file, s=save to file, q=close", buffer_type, #files),
 		vim.log.levels.INFO
 	)
 end

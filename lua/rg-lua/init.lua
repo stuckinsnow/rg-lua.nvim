@@ -2,7 +2,8 @@ local M = {}
 
 -- Store configuration globally
 M.config = {
-	width_percent = 0.5, -- default width
+	width_percent = 0.5, -- default width for side buffer
+	use_main_buffer = false, -- use main buffer instead of side buffer
 }
 
 function M.setup(opts)
