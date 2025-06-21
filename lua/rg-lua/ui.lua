@@ -140,21 +140,29 @@ function M.setup_syntax_highlighting(buf)
 
 		-- Highlight files in the file list section
 		vim.cmd([[syntax match RgResultsFileList "^\./.*" contained]])
+
+		-- Highlight normal content text (lines that start with line numbers)
+		vim.cmd([[syntax match RgResultsContent "^\d\+:.*$"]])
 	end)
 end
 
 function M.highlight_search_terms(buf, search_terms)
 	vim.api.nvim_buf_call(buf, function()
-		-- First highlight line numbers on lines that have them
-		vim.cmd([[syntax match RgResultsLineNr "^\d\+:" nextgroup=RgResultsContent]])
+		-- Clear existing content highlighting
+		vim.cmd([[syntax clear RgResultsContent]])
+		vim.cmd([[syntax clear RgResultsMatch]])
 
-		-- Then highlight each search term in magenta
+		-- Define search term matches (all use same group name)
 		for _, term in ipairs(search_terms) do
-			-- Escape special regex characters
 			local escaped_term = vim.fn.escape(term, "\\[]^$.*~")
-			-- Create syntax match for the search term (case insensitive)
 			vim.cmd(string.format([[syntax match RgResultsMatch "\c%s"]], escaped_term))
 		end
+
+		-- Define line number pattern
+		vim.cmd([[syntax match RgResultsLineNr "^\d\+:" contained]])
+
+		-- Define content pattern that contains the other patterns
+		vim.cmd([[syntax match RgResultsContent "^\d\+:.*$" contains=RgResultsLineNr,RgResultsMatch]])
 	end)
 end
 

@@ -104,6 +104,7 @@ You can customize the colors by setting these highlight groups in your colorsche
 "RgResultsFileList"
 "RgResultsLineNr"
 "RgResultsMatch"
+"RgResultsContent"
 ```
 
 ## Tips & Tricks
