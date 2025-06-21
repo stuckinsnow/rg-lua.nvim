@@ -44,7 +44,7 @@ function M.perform_search(search_terms, search_mode)
 
 			-- Get file list
 			M.get_file_list(search_terms, search_mode, function(files)
-				local markdown_lines = results.create_markdown_output(output, files, search_terms, search_mode)
+				local markdown_lines = results.create_interactive_output(output, files, search_terms, search_mode)
 				ui.show_results_buffer(markdown_lines, files, search_terms)
 			end)
 		end)
