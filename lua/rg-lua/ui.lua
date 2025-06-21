@@ -56,17 +56,22 @@ function M.get_search_mode(search_terms, callback)
 end
 
 function M.show_results_buffer(markdown_lines, files, search_terms)
-	local win, buf = utils.create_side_buffer("search_results", 0.5, "markdown")
+	local win, buf = utils.create_side_buffer("search_results", 0.5, "rg-results")
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, markdown_lines)
 	vim.bo[buf].modifiable = false
 
-	-- Add keymaps
+	-- Set up custom syntax highlighting
+	M.setup_syntax_highlighting(buf)
+
+	-- Add dynamic highlighting for search terms
+	M.highlight_search_terms(buf, search_terms)
+
+	-- Rest of your existing keymap code...
 	vim.keymap.set("n", "q", function()
 		vim.api.nvim_win_close(win, true)
 	end, { buffer = buf, nowait = true, desc = "Close search results" })
 
-	-- Open files with fzf
 	vim.keymap.set("n", "<CR>", function()
 		if #files == 0 then
 			vim.notify("No files to open", vim.log.levels.WARN)
@@ -96,9 +101,8 @@ function M.show_results_buffer(markdown_lines, files, search_terms)
 		})
 	end, { buffer = buf, nowait = true, desc = "Open file picker" })
 
-	-- Save to file
 	vim.keymap.set("n", "s", function()
-		local filename = vim.fn.input("Save to file: ", "search_results_" .. os.date("%Y%m%d_%H%M%S") .. ".md")
+		local filename = vim.fn.input("Save to file: ", "search_results_" .. os.date("%Y%m%d_%H%M%S") .. ".txt")
 		if filename and filename ~= "" then
 			local file = io.open(filename, "w")
 			if file then
@@ -117,6 +121,49 @@ function M.show_results_buffer(markdown_lines, files, search_terms)
 		string.format("Search results: %d files | <CR>=pick file, s=save to file, q=close", #files),
 		vim.log.levels.INFO
 	)
+end
+
+function M.setup_syntax_highlighting(buf)
+	-- Set up syntax matching
+	vim.api.nvim_buf_call(buf, function()
+		-- Clear any existing syntax
+		vim.cmd("syntax clear")
+
+		-- Highlight header lines first
+		vim.cmd([[syntax match RgResultsHeader "^Search Terms:.*$"]])
+		vim.cmd([[syntax match RgResultsHeader "^Search Mode:.*$"]])
+		vim.cmd([[syntax match RgResultsHeader "^Date:.*$"]])
+		vim.cmd([[syntax match RgResultsHeader "^Found \d\+ files:$"]])
+
+		-- Highlight file paths (lines that start with ./ and don't contain line numbers)
+		vim.cmd([[syntax match RgResultsFile "^\./[^:]*$"]])
+
+		-- Highlight files in the file list section
+		vim.cmd([[syntax match RgResultsFileList "^\./.*" contained]])
+
+		-- Highlight normal content text (lines that start with line numbers)
+		vim.cmd([[syntax match RgResultsContent "^\d\+:.*$"]])
+	end)
+end
+
+function M.highlight_search_terms(buf, search_terms)
+	vim.api.nvim_buf_call(buf, function()
+		-- Clear existing content highlighting
+		vim.cmd([[syntax clear RgResultsContent]])
+		vim.cmd([[syntax clear RgResultsMatch]])
+
+		-- Define search term matches (all use same group name)
+		for _, term in ipairs(search_terms) do
+			local escaped_term = vim.fn.escape(term, "\\[]^$.*~")
+			vim.cmd(string.format([[syntax match RgResultsMatch "\c%s"]], escaped_term))
+		end
+
+		-- Define line number pattern
+		vim.cmd([[syntax match RgResultsLineNr "^\d\+:" contained]])
+
+		-- Define content pattern that contains the other patterns
+		vim.cmd([[syntax match RgResultsContent "^\d\+:.*$" contains=RgResultsLineNr,RgResultsMatch]])
+	end)
 end
 
 return M

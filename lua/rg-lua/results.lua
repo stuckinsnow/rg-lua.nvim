@@ -45,41 +45,59 @@ function M.process_file_list(result, unique)
 	return files
 end
 
-function M.create_markdown_output(search_output, files, search_terms, search_mode)
+function M.create_interactive_output(search_output, files, search_terms, search_mode)
 	local lines = {}
 
 	-- Header
-	table.insert(lines, "# Search Results")
-	table.insert(lines, "")
-	table.insert(lines, string.format("**Search Terms:** %s", table.concat(search_terms, " ")))
-	table.insert(lines, string.format("**Search Mode:** %s", search_mode))
-	table.insert(lines, string.format("**Date:** %s", os.date("%Y-%m-%d %H:%M:%S")))
+	table.insert(lines, "Search Terms: " .. table.concat(search_terms, " "))
+	table.insert(lines, "Search Mode: " .. search_mode)
+	table.insert(lines, "Date: " .. os.date("%Y-%m-%d %H:%M:%S"))
 	table.insert(lines, "")
 
-	-- Files found section
-	table.insert(lines, string.format("## 📁 Found %d files:", #files))
-	table.insert(lines, "")
+	-- Simple file list
+	table.insert(lines, string.format("Found %d files:", #files))
 	for _, file in ipairs(files) do
-		table.insert(lines, string.format("- `%s`", file))
+		table.insert(lines, file)
 	end
 	table.insert(lines, "")
 
-	-- Search results section
-	table.insert(lines, "## Search Results")
-	table.insert(lines, "")
-	table.insert(lines, "```")
-
-	-- Add search output, removing ANSI codes for markdown
+	-- Process search output to group by file
 	local clean_output = search_output:gsub("\27%[[0-9;]*m", "")
 	local output_lines = vim.split(clean_output, "\n")
+
+	-- Group results by file
+	local file_results = {}
+	local file_order = {} -- Track order of files as they appear
+
 	for _, line in ipairs(output_lines) do
 		if line ~= "" then
-			table.insert(lines, line)
+			-- Extract file path, line number, and content
+			local file_path, line_num, content = line:match("^([^:]+):(%d+):(.*)")
+			if file_path and line_num and content then
+				if not file_results[file_path] then
+					file_results[file_path] = {}
+					table.insert(file_order, file_path)
+				end
+				-- Store line number and content
+				table.insert(file_results[file_path], {
+					line_num = line_num,
+					content = content,
+				})
+			end
 		end
 	end
 
-	table.insert(lines, "```")
-	table.insert(lines, "")
+	-- Add grouped results in grug-far style
+	for _, file_path in ipairs(file_order) do
+		-- Add filename
+		table.insert(lines, file_path)
+
+		-- Add results for this file with line numbers
+		for _, result in ipairs(file_results[file_path]) do
+			table.insert(lines, string.format("%s:%s", result.line_num, result.content))
+		end
+		table.insert(lines, "")
+	end
 
 	return lines
 end
