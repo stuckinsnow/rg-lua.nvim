@@ -21,7 +21,11 @@ end
 
 -- Helper to create side buffer with common setup
 function M.create_side_buffer(prefix, width_percent, filetype)
-	width_percent = width_percent or 0.5
+	-- Get config from main module if width_percent not provided
+	if not width_percent then
+		local rg_lua = require("rg-lua")
+		width_percent = rg_lua.config.width_percent or 0.5
+	end
 	filetype = filetype or "markdown"
 
 	M.close_existing_buffer(prefix)

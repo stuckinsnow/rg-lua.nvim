@@ -56,7 +56,7 @@ function M.get_search_mode(search_terms, callback)
 end
 
 function M.show_results_buffer(markdown_lines, files, search_terms)
-	local win, buf = utils.create_side_buffer("search_results", 0.5, "rg-results")
+	local win, buf = utils.create_side_buffer("search_results", nil, "rg-results")
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, markdown_lines)
 	vim.bo[buf].modifiable = false

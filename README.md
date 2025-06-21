@@ -35,20 +35,6 @@ A Neovim plugin for searching files with ripgrep and displaying results in a cle
 }
 ```
 
-### Using packer.nvim
-
-```lua
-use {
-  "stuckinsnow/rg-lua",
-  requires = {
-    "ibhagwan/fzf-lua", -- optional
-  },
-  config = function()
-    require("rg-lua").setup()
-  end,
-}
-```
-
 ## Usage
 
 ### Commands
@@ -125,12 +111,13 @@ When saving results, the plugin preserves the clean grouped format:
 
 ## Configuration
 
-Currently, `rg-lua` works out of the box with sensible defaults. Future versions may include customizable options for:
+To change the width of the results buffer, you can set this in your Neovim configuration:
 
-- Search result buffer positioning and size
-- Custom syntax highlighting colors
-- Default save file locations
-- Additional ripgrep flags
+```lua
+require("rg-lua").setup({
+  width_percent = 0.3  -- 30% of screen width
+})
+```
 
 ## Example
 

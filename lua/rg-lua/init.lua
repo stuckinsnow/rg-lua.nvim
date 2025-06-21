@@ -1,7 +1,15 @@
 local M = {}
 
+-- Store configuration globally
+M.config = {
+	width_percent = 0.5, -- default width
+}
+
 function M.setup(opts)
 	opts = opts or {}
+
+	-- Merge user config with defaults
+	M.config = vim.tbl_deep_extend("force", M.config, opts)
 
 	-- Check dependencies
 	if not M.check_dependencies() then
