@@ -2,6 +2,8 @@
 
 A Neovim plugin for searching files with ripgrep and displaying results in a clean, grouped format.
 
+https://github.com/user-attachments/assets/09c99d28-3cfe-48dc-96c3-9bf5bd6bf17e
+
 ## Features
 
 - 🔍 Interactive search with ripgrep
