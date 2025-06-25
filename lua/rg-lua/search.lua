@@ -63,10 +63,101 @@ function M.get_file_list(search_terms, search_mode, callback)
 	end)
 end
 
+function M.search_files_prompt()
+	vim.ui.input({ prompt = "Search terms (space-separated): " }, function(search_input)
+		if not search_input or search_input == "" then
+			return
+		end
+
+		local search_terms = {}
+		for term in search_input:gmatch("%S+") do
+			table.insert(search_terms, term)
+		end
+		if #search_terms == 0 then
+			return
+		end
+
+		local modes = { "OR Search", "AND Search" }
+		vim.ui.select(modes, { prompt = "Search mode:" }, function(search_mode)
+			if not search_mode then
+				return
+			end
+
+			local rg_pattern, rg_cmd
+			if search_mode == "AND Search" and #search_terms > 1 then
+				local pattern = "^"
+				for _, term in ipairs(search_terms) do
+					pattern = pattern .. "(?=.*" .. vim.pesc(term) .. ")"
+				end
+				pattern = pattern .. ".*$"
+				rg_pattern = pattern
+				rg_cmd = string.format("rg --files-with-matches --color=never -P %s .", vim.fn.shellescape(rg_pattern))
+			else
+				local pattern = table.concat(vim.tbl_map(vim.pesc, search_terms), "|")
+				rg_pattern = pattern
+				rg_cmd = string.format("rg --files-with-matches --color=never %s .", vim.fn.shellescape(rg_pattern))
+			end
+
+			local preview_pattern = table.concat(vim.tbl_map(vim.pesc, search_terms), "|")
+			local preview_cmd = string.format(
+				"bat --color=always --style=numbers --paging=never %s 2>/dev/null | grep --color=always -E '%s' || true",
+				"{}",
+				preview_pattern
+			)
+
+			require("fzf-lua").fzf_exec(rg_cmd, {
+				prompt = string.format('Files containing "%s"> ', table.concat(search_terms, " ")),
+				preview = preview_cmd,
+				actions = {
+					["default"] = function(selected)
+						if not selected or #selected == 0 then
+							return
+						end
+						for i, filepath in ipairs(selected) do
+							if vim.fn.filereadable(filepath) == 0 then
+								vim.notify("File not readable: " .. filepath, vim.log.levels.ERROR)
+								goto continue
+							end
+							if i == 1 then
+								vim.cmd("edit " .. vim.fn.fnameescape(filepath))
+							else
+								vim.cmd("badd " .. vim.fn.fnameescape(filepath))
+							end
+							if i == 1 then
+								local search_pat = table.concat(search_terms, "\\|")
+								local search_result = vim.fn.search(search_pat, "w")
+								if search_result > 0 then
+									vim.cmd("normal! zz")
+									vim.fn.setreg("/", table.concat(search_terms, " "))
+									vim.opt.hlsearch = true
+								end
+							end
+							::continue::
+						end
+						if #selected > 1 then
+							vim.notify(
+								string.format("Opened %d files (use :ls to see buffers)", #selected),
+								vim.log.levels.INFO
+							)
+						end
+					end,
+				},
+				fzf_opts = {
+					["--multi"] = true,
+					["--preview-window"] = "right:50%:wrap",
+					["--bind"] = "ctrl-/:toggle-preview,tab:down,shift-tab:up,ctrl-a:select-all,ctrl-d:deselect-all,ctrl-t:toggle",
+					["--cycle"] = true,
+				},
+			})
+		end)
+	end)
+end
+
 function M.setup()
 	vim.api.nvim_create_user_command("RgSearch", function()
 		M.search_files()
 	end, { desc = "Search files with ripgrep" })
+	vim.api.nvim_create_user_command("RgFiles", M.search_files_prompt, { desc = "Ripgrep Search - Prompt" })
 end
 
 return M
