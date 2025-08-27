@@ -100,13 +100,7 @@ function M.show_results_buffer(markdown_lines, files, search_terms)
 				["--header"] = string.format("Files from search: %s", table.concat(search_terms, " ")),
 				["--multi"] = true,
 			},
-			preview = require("fzf-lua").shell.raw_preview_action_cmd(function(items)
-				return string.format(
-					"bat --style=numbers --color=always --line-range=:100 %s 2>/dev/null || cat %s 2>/dev/null || echo '[File not readable]'",
-					vim.fn.shellescape(items[1]),
-					vim.fn.shellescape(items[1])
-				)
-			end),
+			preview = "bat --style=numbers --color=always --line-range=:100 {1} 2>/dev/null || cat {1} 2>/dev/null || echo '[File not readable]'",
 			actions = {
 				["default"] = function(selected)
 					if selected and #selected > 0 then
