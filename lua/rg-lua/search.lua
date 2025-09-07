@@ -78,78 +78,89 @@ function M.search_files_prompt()
 		end
 
 		local modes = { "OR Search", "AND Search" }
-		vim.ui.select(modes, { prompt = "Search mode:" }, function(search_mode)
-			if not search_mode then
-				return
-			end
+		require("fzf-lua").fzf_exec(modes, {
+			prompt = "Search mode> ",
+			winopts = { height = 0.15 },
+			actions = {
+				["default"] = function(selected)
+					if not selected or #selected == 0 then
+						return
+					end
+					local search_mode = selected[1]
 
-			local rg_pattern, rg_cmd
-			if search_mode == "AND Search" and #search_terms > 1 then
-				local pattern = "^"
-				for _, term in ipairs(search_terms) do
-					pattern = pattern .. "(?=.*" .. vim.pesc(term) .. ")"
-				end
-				pattern = pattern .. ".*$"
-				rg_pattern = pattern
-				rg_cmd = string.format("rg --files-with-matches --color=never -P %s .", vim.fn.shellescape(rg_pattern))
-			else
-				local pattern = table.concat(vim.tbl_map(vim.pesc, search_terms), "|")
-				rg_pattern = pattern
-				rg_cmd = string.format("rg --files-with-matches --color=never %s .", vim.fn.shellescape(rg_pattern))
-			end
-
-			local preview_pattern = table.concat(vim.tbl_map(vim.pesc, search_terms), "|")
-			local preview_cmd = string.format(
-				"bat --color=always --style=numbers --paging=never %s 2>/dev/null | grep --color=always -E '%s' || true",
-				"{}",
-				preview_pattern
-			)
-
-			require("fzf-lua").fzf_exec(rg_cmd, {
-				prompt = string.format('Files containing "%s"> ', table.concat(search_terms, " ")),
-				preview = preview_cmd,
-				actions = {
-					["default"] = function(selected)
-						if not selected or #selected == 0 then
-							return
+					local rg_pattern, rg_cmd
+					if search_mode == "AND Search" and #search_terms > 1 then
+						local pattern = "^"
+						for _, term in ipairs(search_terms) do
+							pattern = pattern .. "(?=.*" .. vim.pesc(term) .. ")"
 						end
-						for i, filepath in ipairs(selected) do
-							if vim.fn.filereadable(filepath) == 0 then
-								vim.notify("File not readable: " .. filepath, vim.log.levels.ERROR)
-								goto continue
-							end
-							if i == 1 then
-								vim.cmd("edit " .. vim.fn.fnameescape(filepath))
-							else
-								vim.cmd("badd " .. vim.fn.fnameescape(filepath))
-							end
-							if i == 1 then
-								local search_pat = table.concat(search_terms, "\\|")
-								local search_result = vim.fn.search(search_pat, "w")
-								if search_result > 0 then
-									vim.cmd("normal! zz")
-									vim.fn.setreg("/", table.concat(search_terms, " "))
-									vim.opt.hlsearch = true
+						pattern = pattern .. ".*$"
+						rg_pattern = pattern
+						rg_cmd = string.format(
+							"rg --files-with-matches --color=never -P %s .",
+							vim.fn.shellescape(rg_pattern)
+						)
+					else
+						local pattern = table.concat(vim.tbl_map(vim.pesc, search_terms), "|")
+						rg_pattern = pattern
+						rg_cmd =
+							string.format("rg --files-with-matches --color=never %s .", vim.fn.shellescape(rg_pattern))
+					end
+
+					local preview_pattern = table.concat(vim.tbl_map(vim.pesc, search_terms), "|")
+					local preview_cmd = string.format(
+						"bat --color=always --style=numbers --paging=never %s 2>/dev/null | grep --color=always -E '%s' || true",
+						"{}",
+						preview_pattern
+					)
+
+					require("fzf-lua").fzf_exec(rg_cmd, {
+						prompt = string.format('Files containing "%s"> ', table.concat(search_terms, " ")),
+						preview = preview_cmd,
+						actions = {
+							["default"] = function(files)
+								if not files or #files == 0 then
+									return
 								end
-							end
-							::continue::
-						end
-						if #selected > 1 then
-							vim.notify(
-								string.format("Opened %d files (use :ls to see buffers)", #selected),
-								vim.log.levels.INFO
-							)
-						end
-					end,
-				},
-				fzf_opts = {
-					["--multi"] = true,
-					["--preview-window"] = "right:50%:wrap",
-					["--bind"] = "ctrl-/:toggle-preview,tab:down,shift-tab:up,ctrl-a:select-all,ctrl-d:deselect-all,ctrl-t:toggle",
-					["--cycle"] = true,
-				},
-			})
-		end)
+								for i, filepath in ipairs(files) do
+									if vim.fn.filereadable(filepath) == 0 then
+										vim.notify("File not readable: " .. filepath, vim.log.levels.ERROR)
+										goto continue
+									end
+									if i == 1 then
+										vim.cmd("edit " .. vim.fn.fnameescape(filepath))
+									else
+										vim.cmd("badd " .. vim.fn.fnameescape(filepath))
+									end
+									if i == 1 then
+										local search_pat = table.concat(search_terms, "\\|")
+										local search_result = vim.fn.search(search_pat, "w")
+										if search_result > 0 then
+											vim.cmd("normal! zz")
+											vim.fn.setreg("/", table.concat(search_terms, " "))
+											vim.opt.hlsearch = true
+										end
+									end
+									::continue::
+								end
+								if #files > 1 then
+									vim.notify(
+										string.format("Opened %d files (use :ls to see buffers)", #files),
+										vim.log.levels.INFO
+									)
+								end
+							end,
+						},
+						fzf_opts = {
+							["--multi"] = true,
+							["--preview-window"] = "right:50%:wrap",
+							["--bind"] = "ctrl-/:toggle-preview,tab:down,shift-tab:up,ctrl-a:select-all,ctrl-d:deselect-all,ctrl-t:toggle",
+							["--cycle"] = true,
+						},
+					})
+				end,
+			},
+		})
 	end)
 end
 
