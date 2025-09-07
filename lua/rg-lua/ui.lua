@@ -25,33 +25,37 @@ function M.get_search_mode(search_terms, callback)
 	-- Choose search mode based on number of terms
 	if #search_terms == 1 then
 		-- Single term - only ask about unique
-		vim.ui.select({ "All Results", "Unique Files Only" }, {
-			prompt = "Result mode:",
-			format_item = function(item)
-				return item
-			end,
-		}, function(result_mode)
-			if not result_mode then
-				return
-			end
-
-			local search_mode = result_mode == "Unique Files Only" and "Unique" or "All"
-			callback(search_mode)
-		end)
+		local options = { "All Results", "Unique Files Only" }
+		require("fzf-lua").fzf_exec(options, {
+			prompt = "Result mode> ",
+			winopts = { height = 0.15 },
+			actions = {
+				["default"] = function(selected)
+					if not selected or #selected == 0 then
+						return
+					end
+					local result_mode = selected[1]
+					local search_mode = result_mode == "Unique Files Only" and "Unique" or "All"
+					callback(search_mode)
+				end,
+			},
+		})
 	else
 		-- Multiple terms - ask about AND/OR and unique
-		vim.ui.select({ "OR Search", "AND Search", "Unique OR", "Unique AND" }, {
-			prompt = "Search mode:",
-			format_item = function(item)
-				return item
-			end,
-		}, function(search_mode)
-			if not search_mode then
-				return
-			end
-
-			callback(search_mode)
-		end)
+		local options = { "OR Search", "AND Search", "Unique OR", "Unique AND" }
+		require("fzf-lua").fzf_exec(options, {
+			prompt = "Search mode> ",
+			winopts = { height = 0.2 },
+			actions = {
+				["default"] = function(selected)
+					if not selected or #selected == 0 then
+						return
+					end
+					local search_mode = selected[1]
+					callback(search_mode)
+				end,
+			},
+		})
 	end
 end
 
